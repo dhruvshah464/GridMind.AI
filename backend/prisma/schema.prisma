@@ -1,0 +1,167 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Core Identity ──────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  energyProfiles EnergyProfile[]
+  devices        Device[]
+  decisions      Decision[]
+  billForecasts  BillForecast[]
+}
+
+// ─── Energy System ──────────────────────────────────────────
+
+model EnergyProfile {
+  id              String   @id @default(uuid())
+  userId          String
+  systemSizeKw    Float
+  locationRegion  String
+  monthlyUsageKwh Float
+  tariffPlan      String   @default("standard")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  historicalUsages HistoricalUsage[]
+  simulationRuns   SimulationRun[]
+
+  @@index([userId])
+}
+
+model HistoricalUsage {
+  id              String   @id @default(uuid())
+  energyProfileId String
+  timestamp       DateTime
+  consumptionKwh  Float
+  solarProdKwh    Float?
+  gridImportKwh   Float?
+  gridExportKwh   Float?
+  temperature     Float?
+  tariffRate      Float?
+
+  energyProfile EnergyProfile @relation(fields: [energyProfileId], references: [id], onDelete: Cascade)
+
+  @@index([energyProfileId, timestamp])
+  @@index([timestamp])
+}
+
+model SimulationRun {
+  id              String   @id @default(uuid())
+  energyProfileId String
+  scenarioName    String
+  roiYears        Float
+  savingsMonthly  Float
+  paybackPeriod   Float
+  parameters      Json?
+  createdAt       DateTime @default(now())
+
+  energyProfile EnergyProfile @relation(fields: [energyProfileId], references: [id], onDelete: Cascade)
+
+  @@index([energyProfileId])
+}
+
+// ─── Device Management ──────────────────────────────────────
+
+model Device {
+  id               String   @id @default(uuid())
+  userId           String
+  name             String
+  type             String   @default("appliance")
+  status           String   @default("online")
+  avgLoadKw        Float    @default(0)
+  scheduleOverride Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── AI Decision Intelligence ───────────────────────────────
+
+model Decision {
+  id             String   @id @default(uuid())
+  userId         String?
+  prediction     String
+  action         String
+  impact         String
+  confidence     Float
+  costBenefit    Json?
+  wasAccepted    Boolean  @default(false)
+  actualOutcome  String?
+  feedbackScore  Float?
+  riskScore      Float?
+  reasoningTrace Json?
+  createdAt      DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ─── Financial Projections ──────────────────────────────────
+
+model BillForecast {
+  id               String   @id @default(uuid())
+  userId           String
+  month            String
+  projectedCostUsd Float
+  projectedSavings Float
+  baselineCostUsd  Float
+  factors          Json?
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, month])
+}
+
+// ─── Weather Intelligence ───────────────────────────────────
+
+model WeatherCache {
+  id             String   @id @default(uuid())
+  region         String
+  date           DateTime
+  temperature    Float
+  cloudCover     Float
+  solarRadiation Float?
+  humidity       Float?
+  windSpeed      Float?
+  fetchedAt      DateTime @default(now())
+
+  @@unique([region, date])
+  @@index([region, date])
+}
+
+// ─── Training Data for ML Loop ──────────────────────────────
+
+model TrainingRecord {
+  id          String   @id @default(uuid())
+  timestamp   DateTime
+  consumption Float
+  solar       Float    @default(0)
+  temperature Float    @default(0)
+  hour        Int
+  dayOfWeek   Int
+  rollingMean Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([timestamp])
+}
