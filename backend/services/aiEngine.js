@@ -17,7 +17,8 @@ const WeatherService = require('./weatherService');
 
 async function getMLPrediction(input) {
   try {
-    const res = await axios.post('http://localhost:8000/predict', input, { timeout: 5000 });
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const res = await axios.post(`${aiServiceUrl}/predict`, input, { timeout: 5000 });
     return res.data;
   } catch {
     return null; // ML service is optional enhancement
