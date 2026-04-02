@@ -17,7 +17,7 @@ const WeatherService = require('./weatherService');
 
 async function getMLPrediction(input) {
   try {
-    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'https://gridmind-ai-service.onrender.com';
     const res = await axios.post(`${aiServiceUrl}/predict`, input, { timeout: 5000 });
     return res.data;
   } catch {
